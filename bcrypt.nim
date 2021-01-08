@@ -3,6 +3,12 @@
 {.compile: "bcrypt/crypt-blowfish.c".}
 {.pragma: mydll.}
 
+proc encode_salt(salt: cstring, csalt: int8, clen: int16, rounds: int8): cstring {.cdecl, mydll, importc: "encode_salt".}
+
+proc hashSalt*(salt: string, rounds: int8, csalt: int8 = 4, clen: int16 = 16): string =
+  let cresult = encode_salt(salt, csalt, clen, rounds)
+  return $cresult
+
 proc bcrypt_gensalt(rounds: int8): cstring {.cdecl, mydll, importc: "bcrypt_gensalt".}
 
 proc genSalt*(rounds: int8): string =
@@ -12,9 +18,8 @@ proc blowfish(key, salt, encrypted: cstring) : int {.cdecl, mydll, importc: "cry
 
 proc hash*(key, salt:string): string = 
   var encrypted = newString(60)
-  var ret = blowfish(key, salt, encrypted.cstring)
-  var result:string = $encrypted  
-  return result
+  discard blowfish(key, salt, encrypted.cstring)
+  return $encrypted  
 
 proc compare_string(s1, s2: cstring): int {.cdecl, mydll, importc: "compare_string".}
 
@@ -50,5 +55,10 @@ when isMainModule:
   if same2:
     echo("Hashes for different passwords match. Incorrect!")
   else:
-    echo("Hashes for different passwords don't match.  Correct.") 
+    echo("Hashes for different passwords don't match.  Correct.")
 
+  let saltedString1 = hashSalt("testHash", 10)
+  let saltedString2 = hashSalt("testHash", 10)
+  let hashedpassword1 = hash(password, saltedString1)
+  let hashedpassword2 = hash(password, saltedString2)
+  assert compare(hashedpassword1, hashedpassword2)
